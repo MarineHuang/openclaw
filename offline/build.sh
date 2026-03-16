@@ -266,7 +266,7 @@ if command -v npm &>/dev/null && \
    (cd "$PROD_TMP" && npm install --omit=dev \
       --os="$NPM_OS" --cpu="$NPM_CPU" \
       --ignore-scripts --prefer-offline --no-audit --no-fund \
-      --legacy-peer-deps 2>/dev/null) && \
+      2>/dev/null) && \
    [[ -d "$PROD_TMP/node_modules" ]]; then
     cp -r "$PROD_TMP/node_modules" "$STAGING/node_modules"
 elif (cd "$PROD_TMP" && pnpm install --prod --no-optional --ignore-scripts 2>/dev/null) && \
