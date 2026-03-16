@@ -7,7 +7,7 @@ import { DEFAULT_GATEWAY_DAEMON_RUNTIME } from "../daemon-runtime.js";
 import { applyOnboardingLocalWorkspaceConfig } from "../onboard-config.js";
 import {
   applyWizardMetadata,
-  DEFAULT_WORKSPACE,
+  getDefaultWorkspace,
   ensureWorkspaceAndSessions,
   resolveControlUiLinks,
   waitForGatewayReachable,
@@ -78,7 +78,7 @@ export async function runNonInteractiveOnboardingLocal(params: {
   const workspaceDir = resolveNonInteractiveWorkspaceDir({
     opts,
     baseConfig,
-    defaultWorkspaceDir: DEFAULT_WORKSPACE,
+    defaultWorkspaceDir: getDefaultWorkspace(),
   });
 
   let nextConfig: OpenClawConfig = applyOnboardingLocalWorkspaceConfig(baseConfig, workspaceDir);

@@ -34,7 +34,7 @@ import { healthCommand } from "./health.js";
 import { noteChannelStatus, setupChannels } from "./onboard-channels.js";
 import {
   applyWizardMetadata,
-  DEFAULT_WORKSPACE,
+  getDefaultWorkspace,
   ensureWorkspaceAndSessions,
   guardCancel,
   printWizardHeader,
@@ -424,7 +424,7 @@ export async function runConfigureWizard(
     let workspaceDir =
       nextConfig.agents?.defaults?.workspace ??
       baseConfig.agents?.defaults?.workspace ??
-      DEFAULT_WORKSPACE;
+      getDefaultWorkspace();
     let gatewayPort = resolveGatewayPort(baseConfig);
 
     const persistConfig = async () => {
@@ -444,7 +444,7 @@ export async function runConfigureWizard(
         }),
         runtime,
       );
-      workspaceDir = resolveUserPath(String(workspaceInput ?? "").trim() || DEFAULT_WORKSPACE);
+      workspaceDir = resolveUserPath(String(workspaceInput ?? "").trim() || getDefaultWorkspace());
       if (!snapshot.exists) {
         const indicators = ["MEMORY.md", "memory", ".git"].map((name) =>
           nodePath.join(workspaceDir, name),

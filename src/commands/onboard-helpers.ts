@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { inspect } from "node:util";
 import { cancel, isCancel } from "@clack/prompts";
-import { DEFAULT_AGENT_WORKSPACE_DIR, ensureAgentWorkspace } from "../agents/workspace.js";
+import { resolveDefaultAgentWorkspaceDir, ensureAgentWorkspace } from "../agents/workspace.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { CONFIG_PATH } from "../config/config.js";
 import { resolveAgentModelPrimaryValue } from "../config/model-input.js";
@@ -454,7 +454,9 @@ function summarizeError(err: unknown): string {
   return line.length > 120 ? `${line.slice(0, 119)}…` : line;
 }
 
-export const DEFAULT_WORKSPACE = DEFAULT_AGENT_WORKSPACE_DIR;
+export function getDefaultWorkspace(): string {
+  return resolveDefaultAgentWorkspaceDir();
+}
 
 export function resolveControlUiLinks(params: {
   port: number;

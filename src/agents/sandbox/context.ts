@@ -6,7 +6,7 @@ import { loadConfig } from "../../config/config.js";
 import { defaultRuntime } from "../../runtime.js";
 import { resolveUserPath } from "../../utils.js";
 import { syncSkillsToWorkspace } from "../skills.js";
-import { DEFAULT_AGENT_WORKSPACE_DIR } from "../workspace.js";
+import { resolveDefaultAgentWorkspaceDir } from "../workspace.js";
 import { ensureSandboxBrowser } from "./browser.js";
 import { resolveSandboxConfigForAgent } from "./config.js";
 import { ensureSandboxContainer } from "./docker.js";
@@ -31,7 +31,7 @@ async function ensureSandboxWorkspaceLayout(params: {
   const { cfg, rawSessionKey } = params;
 
   const agentWorkspaceDir = resolveUserPath(
-    params.workspaceDir?.trim() || DEFAULT_AGENT_WORKSPACE_DIR,
+    params.workspaceDir?.trim() || resolveDefaultAgentWorkspaceDir(),
   );
   const workspaceRoot = resolveUserPath(cfg.workspaceRoot);
   const scopeKey = resolveSandboxScopeKey(cfg.scope, rawSessionKey);

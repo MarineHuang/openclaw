@@ -5,7 +5,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
 import { isDeprecatedAuthChoice, normalizeLegacyOnboardAuthChoice } from "./auth-choice-legacy.js";
-import { DEFAULT_WORKSPACE, handleReset } from "./onboard-helpers.js";
+import { getDefaultWorkspace, handleReset } from "./onboard-helpers.js";
 import { runInteractiveOnboarding } from "./onboard-interactive.js";
 import { runNonInteractiveOnboarding } from "./onboard-non-interactive.js";
 import type { OnboardOptions, ResetScope } from "./onboard-types.js";
@@ -69,7 +69,7 @@ export async function onboardCommand(opts: OnboardOptions, runtime: RuntimeEnv =
     const snapshot = await readConfigFileSnapshot();
     const baseConfig = snapshot.valid ? snapshot.config : {};
     const workspaceDefault =
-      normalizedOpts.workspace ?? baseConfig.agents?.defaults?.workspace ?? DEFAULT_WORKSPACE;
+      normalizedOpts.workspace ?? baseConfig.agents?.defaults?.workspace ?? getDefaultWorkspace();
     const resetScope: ResetScope = normalizedOpts.resetScope ?? "config+creds+sessions";
     await handleReset(resetScope, resolveUserPath(workspaceDefault), runtime);
   }

@@ -725,9 +725,23 @@ type ReadConfigFileSnapshotInternalResult = {
 export function createConfigIO(overrides: ConfigIoDeps = {}) {
   const deps = normalizeDeps(overrides);
   const requestedConfigPath = resolveConfigPathForDeps(deps);
+  // When OPENCLAW_STATE_DIR is explicitly set (and no per-call configPath override),
+  // only search within that directory — don't fall through to home-dir legacy candidates.
+  // Otherwise a pre-existing ~/.openclaw/openclaw.json would shadow the override dir,
+  // causing reads/writes to land in the home dir instead of the requested state dir.
+  const hasStateDirOverride =
+    !deps.configPath &&
+    !!(deps.env.OPENCLAW_STATE_DIR?.trim() || deps.env.CLAWDBOT_STATE_DIR?.trim());
   const candidatePaths = deps.configPath
     ? [requestedConfigPath]
-    : resolveDefaultConfigCandidates(deps.env, deps.homedir);
+    : hasStateDirOverride
+      ? (() => {
+          const stateDirResolved = resolveStateDir(deps.env, deps.homedir);
+          return resolveDefaultConfigCandidates(deps.env, deps.homedir).filter(
+            (p) => p.startsWith(stateDirResolved + path.sep) || p === stateDirResolved,
+          );
+        })()
+      : resolveDefaultConfigCandidates(deps.env, deps.homedir);
   const configPath =
     candidatePaths.find((candidate) => deps.fs.existsSync(candidate)) ?? requestedConfigPath;
 

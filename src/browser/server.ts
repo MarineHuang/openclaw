@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import express from "express";
-import { loadConfig } from "../config/config.js";
+import { loadConfig, resolveGatewayPort } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveBrowserConfig } from "./config.js";
 import { ensureBrowserControlAuth, resolveBrowserControlAuth } from "./control-auth.js";
@@ -82,6 +82,11 @@ export async function startBrowserControlServerFromConfig(): Promise<BrowserServ
 
   const authMode = browserAuth.token ? "token" : browserAuth.password ? "password" : "off";
   logServer.info(`Browser control listening on http://127.0.0.1:${port}/ (auth=${authMode})`);
+  if (browserAuth.token) {
+    const gatewayPort = resolveGatewayPort(cfg);
+    const dashboardUrl = `http://127.0.0.1:${gatewayPort}/#token=${encodeURIComponent(browserAuth.token)}`;
+    logServer.info(`Dashboard URL: ${dashboardUrl}`);
+  }
   return state;
 }
 

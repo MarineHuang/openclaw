@@ -236,6 +236,14 @@ function serveResolvedFile(res: ServerResponse, filePath: string, body: Buffer) 
 function serveResolvedIndexHtml(res: ServerResponse, body: string) {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
+  // 若设置了 OPENCLAW_DEFAULT_LOCALE，注入 <meta> 标签供 i18n 初始化读取。
+  // 使用 <meta> 而非 <script> 以避免被 CSP script-src 'self' 拦截。
+  const defaultLocale = process.env.OPENCLAW_DEFAULT_LOCALE;
+  if (defaultLocale) {
+    const escapedLocale = defaultLocale.replace(/"/g, "&quot;");
+    const inject = `<meta name="openclaw-default-locale" content="${escapedLocale}">`;
+    body = body.replace("</head>", `${inject}</head>`);
+  }
   res.end(body);
 }
 

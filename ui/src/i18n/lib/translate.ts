@@ -50,6 +50,13 @@ class I18nManager {
     if (isSupportedLocale(saved)) {
       return saved;
     }
+    // 优先检查服务端注入的默认语言（离线包场景），通过 <meta name="openclaw-default-locale"> 传递
+    const metaLocale = document
+      .querySelector('meta[name="openclaw-default-locale"]')
+      ?.getAttribute("content");
+    if (isSupportedLocale(metaLocale)) {
+      return metaLocale;
+    }
     const language =
       typeof globalThis.navigator?.language === "string" ? globalThis.navigator.language : null;
     return resolveNavigatorLocale(language ?? "");

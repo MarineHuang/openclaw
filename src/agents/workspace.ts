@@ -331,7 +331,7 @@ export async function ensureAgentWorkspace(params?: {
   heartbeatPath?: string;
   bootstrapPath?: string;
 }> {
-  const rawDir = params?.dir?.trim() ? params.dir.trim() : DEFAULT_AGENT_WORKSPACE_DIR;
+  const rawDir = params?.dir?.trim() ? params.dir.trim() : resolveDefaultAgentWorkspaceDir();
   const dir = resolveUserPath(rawDir);
   await fs.mkdir(dir, { recursive: true });
 
