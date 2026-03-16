@@ -1,3 +1,4 @@
+import type { FeishuPairingRequest } from "../controllers/channels.ts";
 import type {
   ChannelAccountSnapshot,
   ChannelsStatusSnapshot,
@@ -26,6 +27,17 @@ export type ChannelsProps = {
   whatsappQrDataUrl: string | null;
   whatsappConnected: boolean | null;
   whatsappBusy: boolean;
+  feishuSetupBusy: boolean;
+  feishuSetupQrDataUrl: string | null;
+  feishuSetupMessage: string | null;
+  feishuSetupResult: { appId: string; appSecret: string } | null;
+  feishuPairingRequests: FeishuPairingRequest[];
+  feishuPairingBusy: boolean;
+  feishuPairingError: string | null;
+  onFeishuSetupStart: () => void;
+  onFeishuSetupPoll: () => void;
+  onFeishuPairingList: () => void;
+  onFeishuPairingApprove: (code: string) => void;
   configSchema: unknown;
   configSchemaLoading: boolean;
   configForm: Record<string, unknown> | null;

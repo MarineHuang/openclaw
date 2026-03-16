@@ -1,13 +1,33 @@
 import type { OpenClawApp } from "./app.ts";
 import {
+  approveFeishuPairing,
+  listFeishuPairing,
   loadChannels,
   logoutWhatsApp,
+  pollFeishuSetup,
+  startFeishuSetup,
   startWhatsAppLogin,
   waitWhatsAppLogin,
 } from "./controllers/channels.ts";
 import { loadConfig, saveConfig } from "./controllers/config.ts";
 import type { NostrProfile } from "./types.ts";
 import { createNostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
+
+export async function handleFeishuSetupStart(host: OpenClawApp) {
+  await startFeishuSetup(host);
+}
+
+export async function handleFeishuSetupPoll(host: OpenClawApp) {
+  await pollFeishuSetup(host);
+}
+
+export async function handleFeishuPairingList(host: OpenClawApp) {
+  await listFeishuPairing(host);
+}
+
+export async function handleFeishuPairingApprove(host: OpenClawApp, code: string) {
+  await approveFeishuPairing(host, code);
+}
 
 export async function handleWhatsAppStart(host: OpenClawApp, force: boolean) {
   await startWhatsAppLogin(host, force);

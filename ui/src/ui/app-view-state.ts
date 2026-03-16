@@ -148,6 +148,14 @@ export type AppViewState = {
   whatsappLoginQrDataUrl: string | null;
   whatsappLoginConnected: boolean | null;
   whatsappBusy: boolean;
+  feishuSetupBusy: boolean;
+  feishuSetupQrDataUrl: string | null;
+  feishuSetupMessage: string | null;
+  feishuSetupInterval: number;
+  feishuSetupResult: { appId: string; appSecret: string; openId?: string } | null;
+  feishuPairingRequests: import("./controllers/channels.ts").FeishuPairingRequest[];
+  feishuPairingBusy: boolean;
+  feishuPairingError: string | null;
   nostrProfileFormState: NostrProfileFormState | null;
   nostrProfileAccountId: string | null;
   configFormDirty: boolean;
@@ -314,6 +322,10 @@ export type AppViewState = {
     loadOverview: () => Promise<void>;
     loadAssistantIdentity: () => Promise<void>;
     loadCron: () => Promise<void>;
+    handleFeishuSetupStart: () => Promise<void>;
+    handleFeishuSetupPoll: () => Promise<void>;
+    handleFeishuPairingList: () => Promise<void>;
+    handleFeishuPairingApprove: (code: string) => Promise<void>;
     handleWhatsAppStart: (force: boolean) => Promise<void>;
     handleWhatsAppWait: () => Promise<void>;
     handleWhatsAppLogout: () => Promise<void>;

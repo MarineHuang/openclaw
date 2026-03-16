@@ -1,7 +1,7 @@
 import { ChannelsStatusSnapshot } from "../types.ts";
-import type { ChannelsState } from "./channels.types.ts";
+import type { ChannelsState, FeishuPairingRequest, FeishuSetupResult } from "./channels.types.ts";
 
-export type { ChannelsState };
+export type { ChannelsState, FeishuPairingRequest, FeishuSetupResult };
 
 export async function loadChannels(state: ChannelsState, probe: boolean) {
   if (!state.client || !state.connected) {
@@ -73,6 +73,102 @@ export async function waitWhatsAppLogin(state: ChannelsState) {
     state.whatsappLoginConnected = null;
   } finally {
     state.whatsappBusy = false;
+  }
+}
+
+export async function startFeishuSetup(state: ChannelsState) {
+  if (!state.client || !state.connected || state.feishuSetupBusy) {
+    return;
+  }
+  state.feishuSetupBusy = true;
+  state.feishuSetupResult = null;
+  state.feishuSetupMessage = null;
+  state.feishuSetupQrDataUrl = null;
+  try {
+    const res = await state.client.request<{
+      qrDataUrl?: string;
+      interval?: number;
+      expireIn?: number;
+      message?: string;
+    }>("feishu.setup.start", {});
+    state.feishuSetupQrDataUrl = res.qrDataUrl ?? null;
+    state.feishuSetupMessage = res.message ?? null;
+    state.feishuSetupInterval = typeof res.interval === "number" ? res.interval : 5;
+  } catch (err) {
+    state.feishuSetupMessage = String(err);
+    state.feishuSetupQrDataUrl = null;
+  } finally {
+    state.feishuSetupBusy = false;
+  }
+}
+
+export async function pollFeishuSetup(state: ChannelsState) {
+  if (!state.client || !state.connected || state.feishuSetupBusy) {
+    return;
+  }
+  state.feishuSetupBusy = true;
+  try {
+    const res = await state.client.request<{
+      pending?: boolean;
+      appId?: string;
+      appSecret?: string;
+      openId?: string;
+    }>("feishu.setup.poll", {});
+    if (!res.pending && res.appId && res.appSecret) {
+      state.feishuSetupResult = {
+        appId: res.appId,
+        appSecret: res.appSecret,
+        openId: res.openId,
+      } as FeishuSetupResult;
+      state.feishuSetupQrDataUrl = null;
+      state.feishuSetupMessage = "机器人创建成功！凭证已自动填入。";
+    }
+    // If still pending, leave qrDataUrl/message as-is
+  } catch (err) {
+    state.feishuSetupMessage = `扫码失败：${String(err)}`;
+    state.feishuSetupQrDataUrl = null;
+  } finally {
+    state.feishuSetupBusy = false;
+  }
+}
+
+export async function listFeishuPairing(state: ChannelsState) {
+  if (!state.client || !state.connected || state.feishuPairingBusy) {
+    return;
+  }
+  state.feishuPairingBusy = true;
+  state.feishuPairingError = null;
+  try {
+    const res = await state.client.request<{ requests?: FeishuPairingRequest[] }>(
+      "feishu.pairing.list",
+      {},
+    );
+    state.feishuPairingRequests = Array.isArray(res.requests) ? res.requests : [];
+  } catch (err) {
+    state.feishuPairingError = String(err);
+  } finally {
+    state.feishuPairingBusy = false;
+  }
+}
+
+export async function approveFeishuPairing(state: ChannelsState, code: string) {
+  if (!state.client || !state.connected || state.feishuPairingBusy) {
+    return;
+  }
+  state.feishuPairingBusy = true;
+  state.feishuPairingError = null;
+  try {
+    await state.client.request("feishu.pairing.approve", { code });
+    // Refresh list after approval
+    const res = await state.client.request<{ requests?: FeishuPairingRequest[] }>(
+      "feishu.pairing.list",
+      {},
+    );
+    state.feishuPairingRequests = Array.isArray(res.requests) ? res.requests : [];
+  } catch (err) {
+    state.feishuPairingError = String(err);
+  } finally {
+    state.feishuPairingBusy = false;
   }
 }
 

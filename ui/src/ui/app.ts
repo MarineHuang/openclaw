@@ -4,6 +4,10 @@ import { i18n, I18nController, isSupportedLocale } from "../i18n/index.ts";
 import {
   handleChannelConfigReload as handleChannelConfigReloadInternal,
   handleChannelConfigSave as handleChannelConfigSaveInternal,
+  handleFeishuPairingApprove as handleFeishuPairingApproveInternal,
+  handleFeishuPairingList as handleFeishuPairingListInternal,
+  handleFeishuSetupPoll as handleFeishuSetupPollInternal,
+  handleFeishuSetupStart as handleFeishuSetupStartInternal,
   handleNostrProfileCancel as handleNostrProfileCancelInternal,
   handleNostrProfileEdit as handleNostrProfileEditInternal,
   handleNostrProfileFieldChange as handleNostrProfileFieldChangeInternal,
@@ -243,6 +247,14 @@ export class OpenClawApp extends LitElement {
   @state() whatsappLoginQrDataUrl: string | null = null;
   @state() whatsappLoginConnected: boolean | null = null;
   @state() whatsappBusy = false;
+  @state() feishuSetupBusy = false;
+  @state() feishuSetupQrDataUrl: string | null = null;
+  @state() feishuSetupMessage: string | null = null;
+  @state() feishuSetupInterval = 5;
+  @state() feishuSetupResult: { appId: string; appSecret: string; openId?: string } | null = null;
+  @state() feishuPairingRequests: import("./controllers/channels.ts").FeishuPairingRequest[] = [];
+  @state() feishuPairingBusy = false;
+  @state() feishuPairingError: string | null = null;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
 
@@ -595,6 +607,22 @@ export class OpenClawApp extends LitElement {
       messageOverride,
       opts,
     );
+  }
+
+  async handleFeishuSetupStart() {
+    await handleFeishuSetupStartInternal(this);
+  }
+
+  async handleFeishuSetupPoll() {
+    await handleFeishuSetupPollInternal(this);
+  }
+
+  async handleFeishuPairingList() {
+    await handleFeishuPairingListInternal(this);
+  }
+
+  async handleFeishuPairingApprove(code: string) {
+    await handleFeishuPairingApproveInternal(this, code);
   }
 
   async handleWhatsAppStart(force: boolean) {
