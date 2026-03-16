@@ -46,9 +46,8 @@ describe("offline/start.sh", () => {
   });
 
   describe("--port", () => {
-    it.concurrent("rejects invalid port (exit code 1)", { timeout: 10000 }, async () => {
-      // --port requires an argument; missing arg should fail
-      // Use timeout to prevent hanging
+    it("rejects missing port argument (exit code 1)", async () => {
+      // --port requires an argument; missing arg should fail with error message
       await expect(exec("bash", [scriptPath, "--port"], { timeout: 5000 })).rejects.toThrow();
     });
   });

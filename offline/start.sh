@@ -41,8 +41,20 @@ ALLOW_HTTP=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --port)   PORT="$2"; shift 2 ;;
-        --bind)   BIND="$2"; shift 2 ;;
+        --port)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "错误: --port 需要指定端口号"
+                echo "使用 --help 查看帮助"
+                exit 1
+            fi
+            PORT="$2"; shift 2 ;;
+        --bind)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "错误: --bind 需要指定地址"
+                echo "使用 --help 查看帮助"
+                exit 1
+            fi
+            BIND="$2"; shift 2 ;;
         --public) BIND="lan"; ALLOW_HTTP=true; shift ;;
         --allow-http) ALLOW_HTTP=true; shift ;;
         -h|--help) show_help ;;

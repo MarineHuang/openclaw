@@ -14,12 +14,30 @@ REM ── 解析参数 ──────────────────�
 if "%~1"=="" goto :done_args
 if /i "%~1"=="--help" goto :show_help
 if /i "%~1"=="-h" goto :show_help
-if /i "%~1"=="--port" (set PORT=%~2& shift & shift & goto :parse_args)
-if /i "%~1"=="--bind" (set BIND=%~2& shift & shift & goto :parse_args)
+if /i "%~1"=="--port" (
+    if "%~2"=="" goto :missing_port_arg
+    echo %~2 | findstr /r "^--" >nul && goto :missing_port_arg
+    set PORT=%~2& shift & shift & goto :parse_args
+)
+if /i "%~1"=="--bind" (
+    if "%~2"=="" goto :missing_bind_arg
+    echo %~2 | findstr /r "^--" >nul && goto :missing_bind_arg
+    set BIND=%~2& shift & shift & goto :parse_args
+)
 if /i "%~1"=="--public" (set BIND=lan& set ALLOW_HTTP=1& shift & goto :parse_args)
 if /i "%~1"=="--allow-http" (set ALLOW_HTTP=1& shift & goto :parse_args)
 echo Unknown option: %~1
 echo Use --help to see available options.
+exit /b 1
+
+:missing_port_arg
+echo Error: --port requires a port number.
+echo Use --help for usage information.
+exit /b 1
+
+:missing_bind_arg
+echo Error: --bind requires an address.
+echo Use --help for usage information.
 exit /b 1
 
 :show_help
