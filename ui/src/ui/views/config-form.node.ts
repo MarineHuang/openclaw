@@ -8,9 +8,11 @@ import {
   humanize,
   pathKey,
   REDACTED_PLACEHOLDER,
+  renderTextWithLinks,
   schemaType,
   type JsonSchema,
 } from "./config-form.shared.ts";
+import { getLocaleLabel } from "./config-labels.ts";
 
 const META_KEYS = new Set(["title", "description", "default", "nullable", "tags", "x-tags"]);
 
@@ -226,7 +228,8 @@ function resolveFieldMeta(
   hints: ConfigUiHints,
 ): FieldMeta {
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
+  const serverLabel = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
+  const label = getLocaleLabel(pathKey(path)) ?? serverLabel;
   const help = hint?.help ?? schema.description;
   const schemaTags = normalizeTags(schema["x-tags"] ?? schema.tags);
   const hintTags = normalizeTags(hint?.tags);
@@ -1286,20 +1289,39 @@ function renderMapField(params: {
                           })}
                         </div>
                       `
-                      : renderNode({
-                          schema,
-                          value: entryValue,
-                          path: valuePath,
-                          hints,
-                          unsupported,
-                          disabled,
-                          searchCriteria,
-                          showLabel: false,
-                          revealSensitive,
-                          isSensitivePathRevealed,
-                          onToggleSensitivePath,
-                          onPatch,
-                        })
+                      : (() => {
+                          // Extract description from entry value if it's an object
+                          const description =
+                            typeof entryValue === "object" && entryValue !== null
+                              ? (entryValue as Record<string, unknown>).description
+                              : undefined;
+                          return html`
+                            ${
+                              description && typeof description === "string"
+                                ? html`
+                                  <div class="cfg-map__item-description">
+                                    ${renderTextWithLinks(description)}
+                                  </div>
+                                `
+                                : nothing
+                            }
+                            ${renderNode({
+                              schema,
+                              value: entryValue,
+                              path: valuePath,
+                              hints,
+                              unsupported,
+                              disabled,
+                              searchCriteria,
+                              showLabel: false,
+                              revealSensitive,
+                              isSensitivePathRevealed,
+                              onToggleSensitivePath,
+                              onPatch,
+                            })}
+                          `;
+                        })()
+                  }
                   }
                 </div>
               </div>

@@ -1,3 +1,4 @@
+import { html, type TemplateResult } from "lit";
 import type { ConfigUiHint, ConfigUiHints } from "../types.ts";
 
 export type JsonSchema = {
@@ -200,4 +201,39 @@ export function countSensitiveConfigValues(
   }
 
   return 0;
+}
+
+/**
+ * 将文本中的 Markdown 链接格式 [文本](url) 转换为 HTML 链接
+ * 仅支持链接格式，不支持其他 Markdown 语法
+ */
+export function renderTextWithLinks(text: string): TemplateResult {
+  if (!text) {
+    return html``;
+  }
+
+  // 匹配 [文本](url) 格式
+  const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts: Array<string | TemplateResult> = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkPattern.exec(text)) !== null) {
+    // 添加链接前的文本
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    // 添加链接
+    parts.push(
+      html`<a href="${match[2]}" target="_blank" rel="noopener noreferrer">${match[1]}</a>`,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // 添加剩余文本
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return html`${parts}`;
 }
