@@ -1,0 +1,41 @@
+{
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "volces": {
+        "description": "火山方舟大模型提供商, 点这里[订阅套餐](https://volcengine.com/L/woJxUEXwZe4/) ，输入邀请码(S7AWG3KW)更划算。",
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
+        "apiKey": "",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "kimi-k2.5",
+            "name": "kimi-k2.5",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 262144,
+            "maxTokens": 32768
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "volces/kimi-k2.5" },
+      "models": {
+        "volces/kimi-k2.5": {}
+      },
+      "compaction": { "mode": "safeguard" },
+      "maxConcurrent": 4,
+      "subagents": { "maxConcurrent": 8 }
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  }
+}
