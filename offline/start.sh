@@ -1,6 +1,10 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
+# 默认端口
+DEFAULT_PORT=18789
+PORT="${1:-$DEFAULT_PORT}"
+
 echo "============================================"
 echo " OpenClaw 离线版"
 echo "============================================"
@@ -8,7 +12,7 @@ echo ""
 echo " 正在启动 OpenClaw Gateway..."
 echo " 启动后请在浏览器中打开:"
 echo ""
-echo "   http://127.0.0.1:18789/#token=<your token>"
+echo "   http://127.0.0.1:${PORT}/#token=<your token>"
 echo ""
 echo " 按 Ctrl+C 可停止服务"
 echo "============================================"
@@ -36,4 +40,4 @@ if [ -d "plugins/openclaw-qqbot" ] && [ ! -d ".openclaw/extensions/openclaw-qqbo
     echo ""
 fi
 
-./node-runtime/bin/node openclaw.mjs gateway --allow-unconfigured --port 18789
+./node-runtime/bin/node openclaw.mjs gateway --allow-unconfigured --port "$PORT"

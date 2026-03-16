@@ -1,6 +1,10 @@
 @echo off
 cd /d "%~dp0"
 
+REM 默认端口
+set DEFAULT_PORT=18789
+if "%~1"=="" (set PORT=%DEFAULT_PORT%) else (set PORT=%~1)
+
 echo ============================================
 echo  OpenClaw Offline
 echo ============================================
@@ -8,7 +12,7 @@ echo.
 echo  Starting OpenClaw Gateway...
 echo  Open in browser after startup:
 echo.
-echo    http://127.0.0.1:18789/#token=(your token)
+echo    http://127.0.0.1:%PORT%/#token=(your token)
 echo.
 echo  Press Ctrl+C to stop.
 echo  See README.md for instructions.
@@ -35,12 +39,12 @@ if exist "plugins\openclaw-qqbot" if not exist ".openclaw\extensions\openclaw-qq
     echo.
 )
 
-node-runtime\node.exe openclaw.mjs gateway --allow-unconfigured --port 18789
+node-runtime\node.exe openclaw.mjs gateway --allow-unconfigured --port %PORT%
 
 if %ERRORLEVEL% neq 0 (
     echo.
     echo  Startup failed. Error code: %ERRORLEVEL%
-    echo  Check if port 18789 is already in use.
+    echo  Check if port %PORT% is already in use.
     echo.
     pause
 )

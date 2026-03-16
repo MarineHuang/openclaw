@@ -45,7 +45,7 @@ EOF
 }
 
 # ── Defaults ──────────────────────────────────────────────────────
-NODE_VERSION="22.14.0"
+NODE_VERSION="22.22.1"
 TARGET=""
 SKIP_BUILD=false
 NO_COMPRESS=false
@@ -226,6 +226,42 @@ cp "$PROJECT_ROOT/package.json" "$PROD_TMP/"
 # user has Developer Mode / admin rights, so we must avoid them.
 # --os / --cpu tell npm which platform's optional native packages to install,
 # enabling correct cross-platform builds (e.g. building win-x64 on Linux).
+# Helper: recursively resolve pnpm symlinks into real directories.
+# This is necessary because pnpm uses a virtual store (.pnpm) with symlinks
+# pointing to it, and these symlinks don't work on Windows without Developer Mode.
+resolve_pnpm_symlinks() {
+    local dir="$1"
+    echo "  Resolving pnpm symlinks for Windows compatibility..."
+    # Keep resolving until no more symlinks are found (handles nested symlinks)
+    local iteration=0
+    local symlinks_file
+    symlinks_file="$(mktemp)"
+    while true; do
+        find "$dir/node_modules" -type l 2>/dev/null > "$symlinks_file"
+        if [[ ! -s "$symlinks_file" ]]; then
+            break
+        fi
+        iteration=$((iteration + 1))
+        if [[ $iteration -gt 20 ]]; then
+            echo "  WARNING: Too many symlink resolution iterations, stopping."
+            break
+        fi
+        local count=0
+        while IFS= read -r link; do
+            local target
+            target="$(readlink -f "$link" 2>/dev/null)" || continue
+            [[ -d "$target" ]] || continue
+            rm "$link"
+            cp -r "$target" "$link"
+            count=$((count + 1))
+        done < "$symlinks_file"
+        echo "    Iteration $iteration: resolved $count symlinks"
+    done
+    rm -f "$symlinks_file"
+    # Remove .pnpm virtual store after resolving all symlinks
+    rm -rf "$dir/node_modules/.pnpm"
+}
+
 if command -v npm &>/dev/null && \
    (cd "$PROD_TMP" && npm install --omit=dev \
       --os="$NPM_OS" --cpu="$NPM_CPU" \
@@ -236,20 +272,12 @@ if command -v npm &>/dev/null && \
 elif (cd "$PROD_TMP" && pnpm install --prod --no-optional --ignore-scripts 2>/dev/null) && \
    [[ -d "$PROD_TMP/node_modules" ]]; then
     cp -r "$PROD_TMP/node_modules" "$STAGING/node_modules"
-    # Resolve pnpm symlinks into real directories so the package works on Windows
-    # without Developer Mode or admin rights.
-    echo "  Resolving pnpm symlinks for Windows compatibility..."
-    find "$STAGING/node_modules" -maxdepth 2 -type l | while read -r link; do
-        target="$(readlink -f "$link" 2>/dev/null)" || continue
-        [[ -d "$target" ]] || continue
-        rm "$link"
-        cp -r "$target" "$link"
-    done
-    rm -rf "$STAGING/node_modules/.pnpm"
+    resolve_pnpm_symlinks "$STAGING"
 else
     # Last-resort fallback: copy full node_modules and strip caches
     echo "  WARNING: npm/pnpm install failed, falling back to full node_modules copy + prune..."
     cp -r "$PROJECT_ROOT/node_modules" "$STAGING/node_modules"
+    resolve_pnpm_symlinks "$STAGING"
     find "$STAGING/node_modules" -name ".cache" -type d -exec rm -rf {} + 2>/dev/null || true
 fi
 rm -rf "$PROD_TMP"

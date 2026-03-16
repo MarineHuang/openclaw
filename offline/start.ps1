@@ -1,4 +1,8 @@
 # OpenClaw 离线版 启动脚本 (PowerShell)
+param(
+    [int]$Port = 18789
+)
+
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -10,7 +14,7 @@ Write-Host ""
 Write-Host " 正在启动 OpenClaw Gateway..."
 Write-Host " 启动后请在浏览器中打开:"
 Write-Host ""
-Write-Host "   http://127.0.0.1:18789/#token=<your token>" -ForegroundColor Cyan
+Write-Host "   http://127.0.0.1:${Port}/#token=<your token>" -ForegroundColor Cyan
 Write-Host ""
 Write-Host " 按 Ctrl+C 可停止服务"
 Write-Host "============================================"
@@ -39,11 +43,11 @@ if ((Test-Path "plugins\openclaw-qqbot") -and -not (Test-Path ".openclaw\extensi
 }
 
 try {
-    & "$PSScriptRoot\node-runtime\node.exe" "$PSScriptRoot\openclaw.mjs" gateway --allow-unconfigured --port 18789
+    & "$PSScriptRoot\node-runtime\node.exe" "$PSScriptRoot\openclaw.mjs" gateway --allow-unconfigured --port $Port
 } catch {
     Write-Host ""
     Write-Host " 启动失败: $_" -ForegroundColor Red
-    Write-Host " 请检查端口 18789 是否被占用" -ForegroundColor Yellow
+    Write-Host " 请检查端口 $Port 是否被占用" -ForegroundColor Yellow
     Write-Host ""
     Read-Host " 按回车键退出"
 }
