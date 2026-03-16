@@ -37,6 +37,9 @@ describe("offline/start.sh", () => {
       expect(stdout).toContain("--bind");
       expect(stdout).toContain("--public");
       expect(stdout).toContain("--allow-http");
+      expect(stdout).toContain("--daemon");
+      expect(stdout).toContain("--stop");
+      expect(stdout).toContain("--status");
     });
 
     it("shows help with -h", async () => {
@@ -68,6 +71,45 @@ describe("offline/start.sh", () => {
           expect(error.stderr).not.toContain("未知参数");
           expect(error.stderr).not.toContain("unknown option");
         }
+      }
+    });
+  });
+
+  describe("--daemon", () => {
+    it("accepts --daemon flag", async () => {
+      const scriptContent = readFileSync(scriptPath, "utf-8");
+      expect(scriptContent).toContain("--daemon");
+      expect(scriptContent).toContain("-d|--daemon");
+    });
+
+    it("accepts -d flag", async () => {
+      const scriptContent = readFileSync(scriptPath, "utf-8");
+      expect(scriptContent).toContain("-d|--daemon) DAEMON_MODE=true");
+    });
+  });
+
+  describe("--status", () => {
+    it("shows status when not running", async () => {
+      try {
+        await exec("bash", [scriptPath, "--status"]);
+      } catch (err: unknown) {
+        const error = err as { stdout?: string; stderr?: string };
+        expect(error.stdout ?? error.stderr).toContain("服务状态:");
+      }
+    });
+
+    it("exits with code 1 when not running", async () => {
+      await expect(exec("bash", [scriptPath, "--status"])).rejects.toThrow();
+    });
+  });
+
+  describe("--stop", () => {
+    it("shows message when no service running", async () => {
+      try {
+        await exec("bash", [scriptPath, "--stop"]);
+      } catch (err: unknown) {
+        const error = err as { stdout?: string; stderr?: string };
+        expect(error.stdout ?? error.stderr).toContain("服务未运行");
       }
     });
   });
