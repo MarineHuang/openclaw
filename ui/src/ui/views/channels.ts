@@ -16,9 +16,11 @@ import type {
 } from "../types.ts";
 import { renderChannelConfigSection } from "./channels.config.ts";
 import { renderDiscordCard } from "./channels.discord.ts";
+import { renderFeishuCard } from "./channels.feishu.ts";
 import { renderGoogleChatCard } from "./channels.googlechat.ts";
 import { renderIMessageCard } from "./channels.imessage.ts";
 import { renderNostrCard } from "./channels.nostr.ts";
+import { renderQQBotCard } from "./channels.qqbot.ts";
 import { channelEnabled, renderChannelAccountCount } from "./channels.shared.ts";
 import { renderSignalCard } from "./channels.signal.ts";
 import { renderSlackCard } from "./channels.slack.ts";
@@ -89,14 +91,32 @@ ${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "No snapshot yet."}
   `;
 }
 
+// Channels that always have a dedicated UI card, regardless of plugin load state.
+// These are appended to the server-provided order when not already present.
+const STATIC_UI_CHANNELS: ChannelKey[] = ["feishu"];
+
 function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): ChannelKey[] {
+  const appendStatic = (order: ChannelKey[]): ChannelKey[] => {
+    const extra = STATIC_UI_CHANNELS.filter((id) => !order.includes(id));
+    return extra.length > 0 ? [...order, ...extra] : order;
+  };
   if (snapshot?.channelMeta?.length) {
-    return snapshot.channelMeta.map((entry) => entry.id);
+    return appendStatic(snapshot.channelMeta.map((entry) => entry.id));
   }
   if (snapshot?.channelOrder?.length) {
-    return snapshot.channelOrder;
+    return appendStatic(snapshot.channelOrder);
   }
-  return ["whatsapp", "telegram", "discord", "googlechat", "slack", "signal", "imessage", "nostr"];
+  return [
+    "whatsapp",
+    "telegram",
+    "discord",
+    "googlechat",
+    "slack",
+    "signal",
+    "imessage",
+    "nostr",
+    "feishu",
+  ];
 }
 
 function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChannelData) {
@@ -172,6 +192,10 @@ function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChan
         onEditProfile: () => props.onNostrProfileEdit(accountId, profile),
       });
     }
+    case "qqbot":
+      return renderQQBotCard({ props });
+    case "feishu":
+      return renderFeishuCard({ props });
     default:
       return renderGenericChannelCard(key, props, data.channelAccounts ?? {});
   }
