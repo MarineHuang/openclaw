@@ -10,8 +10,11 @@ set BIND=%DEFAULT_BIND%
 set ALLOW_HTTP=0
 set DAEMON_MODE=0
 set ACTION=
+set RESTORE_PATH=
+set FORCE_MODE=0
 set PID_FILE=.openclaw\gateway.pid
 set LOG_FILE=.openclaw\logs\gateway.log
+set BACKUP_DIR=backups
 
 REM ── 解析参数 ──────────────────────────────────────────────────────
 :parse_args
@@ -34,6 +37,13 @@ if /i "%~1"=="-d" (set DAEMON_MODE=1& shift & goto :parse_args)
 if /i "%~1"=="--daemon" (set DAEMON_MODE=1& shift & goto :parse_args)
 if /i "%~1"=="--stop" (set ACTION=stop& shift & goto :parse_args)
 if /i "%~1"=="--status" (set ACTION=status& shift & goto :parse_args)
+if /i "%~1"=="--backup" (set ACTION=backup& shift & goto :parse_args)
+if /i "%~1"=="--restore" (
+    if "%~2"=="" set ACTION=restore& shift & goto :parse_args
+    echo %~2 | findstr /r "^--" >nul && (set ACTION=restore& shift & goto :parse_args)
+    set RESTORE_PATH=%~2& set ACTION=restore& shift & shift & goto :parse_args
+)
+if /i "%~1"=="--force" (set FORCE_MODE=1& shift & goto :parse_args)
 echo Unknown option: %~1
 echo Use --help to see available options.
 exit /b 1
@@ -63,6 +73,9 @@ echo   --allow-http       Allow HTTP public access (disable device auth)
 echo   -d, --daemon       Run in background (daemon mode)
 echo   --stop             Stop the background service
 echo   --status           Show service status
+echo   --backup           Backup user data (.openclaw directory)
+echo   --restore ^<path^>   Restore user data from backup file
+echo   --force            Force operation (e.g., overwrite existing data)
 echo   -h, --help         Show this help message
 echo.
 echo Examples:
@@ -73,6 +86,8 @@ echo   start.bat --bind lan --port 8080    LAN access, port 8080
 echo   start.bat --daemon                  Run in background
 echo   start.bat --status                  Show status
 echo   start.bat --stop                    Stop service
+echo   start.bat --backup                  Backup data
+echo   start.bat --restore backups\openclaw-data-xxx.tar.gz  Restore data
 echo.
 echo Note:
 echo   --public and --allow-http reduce security, only for internal/testing.
@@ -87,6 +102,12 @@ if "%ACTION%"=="status" goto :check_status
 
 REM ── 处理 stop 命令 ──────────────────────────────────────────────────────
 if "%ACTION%"=="stop" goto :stop_service
+
+REM ── 处理 backup 命令 ──────────────────────────────────────────────────────
+if "%ACTION%"=="backup" goto :backup_data
+
+REM ── 处理 restore 命令 ──────────────────────────────────────────────────────
+if "%ACTION%"=="restore" goto :restore_data
 
 REM ── 检查是否后台模式 ──────────────────────────────────────────────────────
 if "%DAEMON_MODE%"=="1" goto :daemon_start
@@ -134,6 +155,106 @@ if exist "%PID_FILE%" (
     echo Service not running (no PID file).
 )
 exit /b 0
+
+REM ── 备份用户数据 ──────────────────────────────────────────────────────
+:backup_data
+if not exist ".openclaw" (
+    echo Error: .openclaw directory does not exist, no data to backup.
+    echo Please start the service first to initialize the data directory.
+    exit /b 1
+)
+
+REM 检查目录是否为空
+dir /b ".openclaw" 2>nul | findstr "^" >nul
+if errorlevel 1 (
+    echo Error: .openclaw directory is empty, no data to backup.
+    exit /b 1
+)
+
+if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
+
+REM 获取时间戳
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /format:list 2^>nul') do set DATETIME=%%I
+set TIMESTAMP=%DATETIME:~0,8%-%DATETIME:~8,6%
+set BACKUP_FILE=%BACKUP_DIR%\openclaw-data-%TIMESTAMP%.tar.gz
+
+echo Backing up user data...
+echo Source directory: .openclaw\
+
+REM 使用 tar 打包（Windows 10+ 内置）
+tar --exclude=".openclaw\logs\*.log" --exclude=".openclaw\logs\*.log.*" --exclude=".openclaw\gateway.pid" --exclude=".openclaw\*.tmp" -czf "%BACKUP_FILE%" .openclaw\ 2>nul
+
+if exist "%BACKUP_FILE%" (
+    for %%A in ("%BACKUP_FILE%") do set BACKUP_SIZE=%%~zA
+    echo.
+    echo Backup complete!
+    echo Backup file: %BACKUP_FILE%
+    echo File size: !BACKUP_SIZE! bytes
+    echo.
+    echo Restore command: start.bat --restore %BACKUP_FILE%
+    exit /b 0
+) else (
+    echo Error: Backup failed.
+    exit /b 1
+)
+
+REM ── 恢复用户数据 ──────────────────────────────────────────────────────
+:restore_data
+if "%RESTORE_PATH%"=="" (
+    echo Error: Please specify a backup file path.
+    echo Usage: start.bat --restore ^<backup_file_path^>
+    echo.
+    echo Available backup files:
+    if exist "%BACKUP_DIR%" (
+        dir /b "%BACKUP_DIR%\*.tar.gz" 2>nul || echo   ^(No backup files^)
+    ) else (
+        echo   ^(Backup directory does not exist^)
+    )
+    exit /b 1
+)
+
+REM 支持相对路径
+echo %RESTORE_PATH% | findstr /r "^[A-Za-z]:" >nul || set RESTORE_PATH=%~dp0%RESTORE_PATH%
+
+if not exist "%RESTORE_PATH%" (
+    echo Error: Backup file does not exist: %RESTORE_PATH%
+    exit /b 1
+)
+
+REM 检查是否已有 .openclaw 目录
+if exist ".openclaw" (
+    if "%FORCE_MODE%"=="0" (
+        echo Warning: .openclaw directory already exists in current location.
+        echo Restore operation will overwrite existing data!
+        echo.
+        echo Please use --force to confirm overwrite:
+        echo   start.bat --restore %RESTORE_PATH% --force
+        echo.
+        echo Or backup existing data first:
+        echo   start.bat --backup
+        exit /b 1
+    )
+    echo Warning: Will overwrite existing .openclaw directory
+    rmdir /s /q ".openclaw" 2>nul
+)
+
+echo Restoring user data from backup...
+echo Backup file: %RESTORE_PATH%
+
+tar -xzf "%RESTORE_PATH%" 2>nul
+
+if exist ".openclaw" (
+    echo.
+    echo Restore complete!
+    echo Data directory: .openclaw\
+    echo.
+    echo Next step: Start the service
+    echo   start.bat --daemon
+    exit /b 0
+) else (
+    echo Error: Restore failed, please check if the backup file is corrupted.
+    exit /b 1
+)
 
 REM ── 后台模式启动 ──────────────────────────────────────────────────────
 :daemon_start

@@ -8,6 +8,7 @@ DAEMON_MODE=false
 ACTION=""
 PID_FILE=".openclaw/gateway.pid"
 LOG_FILE=".openclaw/logs/gateway.log"
+BACKUP_DIR="backups"
 
 # ── 帮助信息 ──────────────────────────────────────────────────────
 show_help() {
@@ -25,6 +26,9 @@ OpenClaw 离线版启动脚本
   -d, --daemon       后台运行模式
   --stop             停止后台运行的服务
   --status           查看服务状态
+  --backup           备份用户数据 (.openclaw 目录)
+  --restore <路径>   从备份文件恢复用户数据
+  --force            强制执行 (如覆盖已有数据)
   -h, --help         显示此帮助信息
 
 示例:
@@ -35,6 +39,8 @@ OpenClaw 离线版启动脚本
   ./start.sh --daemon                  # 后台运行
   ./start.sh --status                  # 查看状态
   ./start.sh --stop                    # 停止服务
+  ./start.sh --backup                  # 备份数据
+  ./start.sh --restore backups/openclaw-data-xxx.tar.gz  # 恢复数据
 
 注意:
   --public 和 --allow-http 选项会降低安全性，仅适合内网/测试环境。
@@ -96,10 +102,116 @@ stop_service() {
     fi
 }
 
+# ── 备份用户数据 ──────────────────────────────────────────────────────
+backup_data() {
+    if [ ! -d ".openclaw" ]; then
+        echo "错误: .openclaw 目录不存在，无数据可备份" >&2
+        echo "请先启动一次服务以初始化数据目录" >&2
+        exit 1
+    fi
+
+    # 检查目录是否为空（排除隐藏文件）
+    if [ -z "$(ls -A .openclaw 2>/dev/null)" ]; then
+        echo "错误: .openclaw 目录为空，无数据可备份" >&2
+        exit 1
+    fi
+
+    mkdir -p "$BACKUP_DIR"
+
+    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP_FILE="${BACKUP_DIR}/openclaw-data-${TIMESTAMP}.tar.gz"
+
+    echo "正在备份用户数据..."
+    echo "源目录: .openclaw/"
+
+    # 排除日志文件和临时文件
+    if tar --exclude='.openclaw/logs/*.log' \
+        --exclude='.openclaw/logs/*.log.*' \
+        --exclude='.openclaw/gateway.pid' \
+        --exclude='.openclaw/*.tmp' \
+        -czf "$BACKUP_FILE" .openclaw/ 2>/dev/null; then
+        BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+        echo ""
+        echo "备份完成!"
+        echo "备份文件: $BACKUP_FILE"
+        echo "文件大小: $BACKUP_SIZE"
+        echo ""
+        echo "恢复命令: ./start.sh --restore $BACKUP_FILE"
+        exit 0
+    else
+        echo "错误: 备份失败" >&2
+        rm -f "$BACKUP_FILE"
+        exit 1
+    fi
+}
+
+# ── 恢复用户数据 ──────────────────────────────────────────────────────
+restore_data() {
+    RESTORE_FILE="$1"
+
+    if [ -z "$RESTORE_FILE" ]; then
+        echo "错误: 请指定备份文件路径" >&2
+        echo "用法: ./start.sh --restore <备份文件路径>" >&2
+        echo "" >&2
+        echo "可用的备份文件:" >&2
+        if [ -d "$BACKUP_DIR" ]; then
+            ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || echo "  (无备份文件)" >&2
+        else
+            echo "  (备份目录不存在)" >&2
+        fi
+        exit 1
+    fi
+
+    # 支持相对路径和绝对路径
+    if [[ "$RESTORE_FILE" != /* ]]; then
+        RESTORE_FILE="$(pwd)/$RESTORE_FILE"
+    fi
+
+    if [ ! -f "$RESTORE_FILE" ]; then
+        echo "错误: 备份文件不存在: $RESTORE_FILE" >&2
+        exit 1
+    fi
+
+    # 检查是否已有 .openclaw 目录
+    if [ -d ".openclaw" ]; then
+        if [ "$FORCE_MODE" != "true" ]; then
+            echo "警告: 当前目录已存在 .openclaw 目录" >&2
+            echo "恢复操作将覆盖现有数据!" >&2
+            echo "" >&2
+            echo "请使用 --force 参数确认覆盖:" >&2
+            echo "  ./start.sh --restore $RESTORE_FILE --force" >&2
+            echo "" >&2
+            echo "或先手动备份现有数据:" >&2
+            echo "  ./start.sh --backup" >&2
+            exit 1
+        fi
+        echo "警告: 将覆盖现有 .openclaw 目录"
+        rm -rf ".openclaw"
+    fi
+
+    echo "正在从备份恢复用户数据..."
+    echo "备份文件: $RESTORE_FILE"
+
+    if tar -xzf "$RESTORE_FILE" 2>/dev/null; then
+        echo ""
+        echo "恢复完成!"
+        echo "数据目录: .openclaw/"
+        echo ""
+        echo "下一步: 启动服务"
+        echo "  ./start.sh --daemon"
+        exit 0
+    else
+        echo "错误: 恢复失败，请检查备份文件是否损坏" >&2
+        exit 1
+    fi
+}
+
 # ── 解析参数 ──────────────────────────────────────────────────────
 PORT="$DEFAULT_PORT"
 BIND="$DEFAULT_BIND"
 ALLOW_HTTP=false
+FORCE_MODE=false
+RESTORE_PATH=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -122,6 +234,17 @@ while [[ $# -gt 0 ]]; do
         -d|--daemon) DAEMON_MODE=true; shift ;;
         --stop) ACTION="stop"; shift ;;
         --status) ACTION="status"; shift ;;
+        --backup) ACTION="backup"; shift ;;
+        --restore)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                ACTION="restore"
+                shift
+            else
+                RESTORE_PATH="$2"
+                ACTION="restore"
+                shift 2
+            fi ;;
+        --force) FORCE_MODE=true; shift ;;
         -h|--help) show_help ;;
         *) echo "未知参数: $1"; echo "使用 --help 查看帮助"; exit 1 ;;
     esac
@@ -131,6 +254,8 @@ done
 case "$ACTION" in
     stop) stop_service ;;
     status) check_status ;;
+    backup) backup_data ;;
+    restore) restore_data "$RESTORE_PATH" ;;
 esac
 
 # 后台运行模式启动

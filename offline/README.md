@@ -63,6 +63,130 @@ start.bat --public                         # 公网访问模式
 
 > ⚠️ `--public` 和 `--allow-http` 会降低安全性，仅适合内网/测试环境。生产环境请使用 HTTPS 反向代理。
 
+## 数据备份与升级
+
+### 备份用户数据
+
+在升级前或定期备份当前配置和数据：
+
+```bash
+# Linux/macOS
+./start.sh --backup
+
+# Windows (PowerShell)
+.\start.ps1 -Backup
+
+# Windows (CMD)
+start.bat --backup
+```
+
+备份文件保存在 `backups/` 目录下，文件名格式为 `openclaw-data-YYYYMMDD-HHMMSS.tar.gz`。
+
+备份内容包括：
+
+- 配置文件 (`openclaw.json`, `providers.json`)
+- 凭证数据 (`credentials/`)
+- 记忆数据 (`memory/`)
+- Agent 数据 (`agents/`)
+- 扩展配置 (`extensions/`)
+
+### 恢复用户数据
+
+将备份的数据恢复到当前目录：
+
+```bash
+# Linux/macOS
+./start.sh --restore <备份文件路径>
+
+# Windows (PowerShell)
+.\start.ps1 -Restore <备份文件路径>
+
+# Windows (CMD)
+start.bat --restore <备份文件路径>
+```
+
+如果当前目录已存在 `.openclaw/` 目录，需要使用 `--force` 参数确认覆盖：
+
+```bash
+# Linux/macOS
+./start.sh --restore <备份文件路径> --force
+
+# Windows (PowerShell)
+.\start.ps1 -Restore <备份文件路径> -Force
+
+# Windows (CMD)
+start.bat --restore <备份文件路径> --force
+```
+
+### 升级到新版本
+
+1. **在旧版本目录下备份数据**：
+
+   ```bash
+   # Linux/macOS
+   cd openclaw-offline-OLDVERSION-linux-x64
+   ./start.sh --backup
+
+   # Windows (PowerShell)
+   cd openclaw-offline-OLDVERSION-win-x64
+   .\start.ps1 -Backup
+   ```
+
+   记下输出的备份文件路径，例如：
+   `backups/openclaw-data-20260319-143052.tar.gz`
+
+2. **解压新版本到新目录**：
+
+   ```bash
+   # Linux/macOS
+   tar xzf openclaw-offline-NEWVERSION-linux-x64.tar.gz
+
+   # Windows (PowerShell)
+   Expand-Archive openclaw-offline-NEWVERSION-win-x64.zip -DestinationPath .
+   ```
+
+3. **在新版本目录下恢复数据**：
+
+   ```bash
+   # Linux/macOS
+   cd openclaw-offline-NEWVERSION-linux-x64
+   ./start.sh --restore ../openclaw-offline-OLDVERSION-linux-x64/backups/openclaw-data-20260319-143052.tar.gz
+
+   # Windows (PowerShell)
+   cd openclaw-offline-NEWVERSION-win-x64
+   .\start.ps1 -Restore ..\openclaw-offline-OLDVERSION-win-x64\backups\openclaw-data-20260319-143052.tar.gz
+   ```
+
+4. **启动新版本**：
+
+   ```bash
+   # Linux/macOS
+   ./start.sh --daemon
+
+   # Windows (PowerShell)
+   .\start.ps1 -Daemon
+   ```
+
+5. **验证数据是否保留**：
+
+   ```bash
+   # Linux/macOS
+   # 检查配置
+   cat .openclaw/openclaw.json | grep -A5 "agents\|channels"
+
+   # 检查记忆数据
+   ls -la .openclaw/memory/
+
+   # Windows (PowerShell)
+   # 检查配置
+   Get-Content .openclaw\openclaw.json | Select-String "agents|channels"
+
+   # 检查记忆数据
+   Get-ChildItem .openclaw\memory\
+   ```
+
+---
+
 ## 常见问题
 
 ### 端口被占用
@@ -173,6 +297,18 @@ http://<服务器IP>:18789?token=<gateway.auth.token 的值>
 token 值见 `.openclaw/openclaw.json` 中的 `gateway.auth.token` 字段。
 
 > ⚠️ 以上配置会降低安全性，仅适合内网/测试环境。生产环境请使用 HTTPS 反向代理。
+
+---
+
+## 飞书机器人配置
+
+要在群聊中接收所有消息（无需 @机器人），需要在飞书开放平台申请权限：
+
+1. 登录飞书开放平台，进入应用配置
+2. 在「权限管理」中搜索并申请权限：`im:message:group_msg`
+3. 权限生效后，机器人即可接收群聊中的所有消息
+
+> 默认情况下，飞书仅向机器人推送包含 @机器人 的群聊消息。申请 `im:message:group_msg` 权限后可接收所有群聊消息。
 
 ---
 

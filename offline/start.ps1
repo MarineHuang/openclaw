@@ -8,6 +8,9 @@ param(
     [switch]$Daemon,
     [switch]$Stop,
     [switch]$Status,
+    [switch]$Backup,
+    [string]$Restore,
+    [switch]$Force,
     [switch]$Help
 )
 
@@ -17,6 +20,7 @@ Set-Location $PSScriptRoot
 
 $PID_FILE = ".openclaw\gateway.pid"
 $LOG_FILE = ".openclaw\logs\gateway.log"
+$BACKUP_DIR = "backups"
 
 # ── 帮助信息 ──────────────────────────────────────────────────────
 if ($Help) {
@@ -35,6 +39,9 @@ OpenClaw 离线版启动脚本
   -Daemon            后台运行模式
   -Stop              停止后台运行的服务
   -Status            查看服务状态
+  -Backup            备份用户数据 (.openclaw 目录)
+  -Restore <路径>    从备份文件恢复用户数据
+  -Force             强制执行 (如覆盖已有数据)
   -Help              显示此帮助信息
 
 示例:
@@ -45,6 +52,8 @@ OpenClaw 离线版启动脚本
   .\start.ps1 -Daemon                   # 后台运行
   .\start.ps1 -Status                   # 查看状态
   .\start.ps1 -Stop                     # 停止服务
+  .\start.ps1 -Backup                   # 备份数据
+  .\start.ps1 -Restore backups\openclaw-data-xxx.tar.gz  # 恢复数据
 
 注意:
   -Public 和 -AllowHttp 选项会降低安全性，仅适合内网/测试环境。
@@ -100,6 +109,138 @@ if ($Stop) {
         }
     } else {
         Write-Host "服务未运行 (无 PID 文件)"
+        exit 1
+    }
+}
+
+# ── 备份用户数据 ──────────────────────────────────────────────────────
+if ($Backup) {
+    if (-not (Test-Path ".openclaw")) {
+        Write-Host "错误: .openclaw 目录不存在，无数据可备份" -ForegroundColor Red
+        Write-Host "请先启动一次服务以初始化数据目录"
+        exit 1
+    }
+
+    # 检查目录是否为空
+    $items = Get-ChildItem -Path ".openclaw" -ErrorAction SilentlyContinue
+    if ($items.Count -eq 0) {
+        Write-Host "错误: .openclaw 目录为空，无数据可备份" -ForegroundColor Red
+        exit 1
+    }
+
+    if (-not (Test-Path $BACKUP_DIR)) {
+        New-Item -ItemType Directory -Force $BACKUP_DIR | Out-Null
+    }
+
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $backupFile = "$BACKUP_DIR\openclaw-data-$timestamp.tar.gz"
+
+    Write-Host "正在备份用户数据..."
+    Write-Host "源目录: .openclaw\"
+
+    # 使用 PowerShell 的 Compress-Archive 创建 zip，然后用 tar（如果可用）
+    # Windows 10+ 有 tar 命令
+    try {
+        # 排除日志和临时文件
+        $excludePatterns = @("*.log", "*.tmp", "gateway.pid")
+        $tempDir = "$env:TEMP\openclaw-backup-$timestamp"
+        New-Item -ItemType Directory -Force $tempDir | Out-Null
+
+        # 复制文件，排除不需要的
+        Get-ChildItem -Path ".openclaw" -Recurse | Where-Object {
+            $exclude = $false
+            foreach ($pattern in $excludePatterns) {
+                if ($_.Name -like $pattern) { $exclude = $true; break }
+            }
+            -not $exclude
+        } | ForEach-Object {
+            $targetPath = $_.FullName.Replace("$PSScriptRoot\.openclaw", $tempDir)
+            if ($_.PSIsContainer) {
+                New-Item -ItemType Directory -Force $targetPath -ErrorAction SilentlyContinue | Out-Null
+            } else {
+                $targetDir = Split-Path $targetPath -Parent
+                if (-not (Test-Path $targetDir)) {
+                    New-Item -ItemType Directory -Force $targetDir | Out-Null
+                }
+                Copy-Item $_.FullName $targetPath -Force
+            }
+        }
+
+        # 使用 tar 打包（Windows 10+ 内置）
+        & tar -czf $backupFile -C $tempDir "..\.openclaw" 2>$null
+        Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+
+        if (Test-Path $backupFile) {
+            $backupSize = (Get-Item $backupFile).Length / 1MB
+            Write-Host ""
+            Write-Host "备份完成!" -ForegroundColor Green
+            Write-Host "备份文件: $backupFile"
+            Write-Host "文件大小: $([math]::Round($backupSize, 2)) MB"
+            Write-Host ""
+            Write-Host "恢复命令: .\start.ps1 -Restore $backupFile"
+            exit 0
+        } else {
+            Write-Host "错误: 备份失败" -ForegroundColor Red
+            exit 1
+        }
+    } catch {
+        Write-Host "错误: 备份失败 - $_" -ForegroundColor Red
+        exit 1
+    }
+}
+
+# ── 恢复用户数据 ──────────────────────────────────────────────────────
+if ($Restore -ne "") {
+    $restoreFile = $Restore
+
+    # 支持相对路径
+    if (-not [System.IO.Path]::IsPathRooted($restoreFile)) {
+        $restoreFile = "$PSScriptRoot\$restoreFile"
+    }
+
+    if (-not (Test-Path $restoreFile)) {
+        Write-Host "错误: 备份文件不存在: $restoreFile" -ForegroundColor Red
+        exit 1
+    }
+
+    # 检查是否已有 .openclaw 目录
+    if (Test-Path ".openclaw") {
+        if (-not $Force) {
+            Write-Host "警告: 当前目录已存在 .openclaw 目录" -ForegroundColor Yellow
+            Write-Host "恢复操作将覆盖现有数据!"
+            Write-Host ""
+            Write-Host "请使用 -Force 参数确认覆盖:"
+            Write-Host "  .\start.ps1 -Restore `"$Restore`" -Force"
+            Write-Host ""
+            Write-Host "或先手动备份现有数据:"
+            Write-Host "  .\start.ps1 -Backup"
+            exit 1
+        }
+        Write-Host "警告: 将覆盖现有 .openclaw 目录"
+        Remove-Item -Recurse -Force ".openclaw" -ErrorAction SilentlyContinue
+    }
+
+    Write-Host "正在从备份恢复用户数据..."
+    Write-Host "备份文件: $restoreFile"
+
+    try {
+        # 使用 tar 解压（Windows 10+ 内置）
+        & tar -xzf $restoreFile -C $PSScriptRoot 2>$null
+
+        if (Test-Path ".openclaw") {
+            Write-Host ""
+            Write-Host "恢复完成!" -ForegroundColor Green
+            Write-Host "数据目录: .openclaw\"
+            Write-Host ""
+            Write-Host "下一步: 启动服务"
+            Write-Host "  .\start.ps1 -Daemon"
+            exit 0
+        } else {
+            Write-Host "错误: 恢复失败，备份文件可能损坏" -ForegroundColor Red
+            exit 1
+        }
+    } catch {
+        Write-Host "错误: 恢复失败 - $_" -ForegroundColor Red
         exit 1
     }
 }
