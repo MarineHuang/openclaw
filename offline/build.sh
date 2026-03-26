@@ -388,12 +388,26 @@ else
     fi
 fi
 
-# Pre-install WeChat (Weixin) official plugin for offline use
-echo "  Pre-installing Weixin plugin (@tencent-weixin/openclaw-weixin)..."
+# Pre-install WeChat (Weixin) official plugin for offline use.
+# The plugin has two major lines:
+#   v2.x (latest) — requires OpenClaw >= 2026.3.22 (new plugin-sdk APIs)
+#   v1.x (legacy) — compatible with OpenClaw >= 2026.3.0
+# Pick the right version based on the host OpenClaw version being packaged.
+WEIXIN_MIN_FOR_V2="2026.3.22"
+if node -e "
+  const [ay,am,ad] = '${VERSION}'.split('.').map(Number);
+  const [by,bm,bd] = '${WEIXIN_MIN_FOR_V2}'.split('.').map(Number);
+  process.exit((ay>by||(ay===by&&(am>bm||(am===bm&&ad>=bd))))?0:1);
+" 2>/dev/null; then
+    WEIXIN_NPM_SPEC="@tencent-weixin/openclaw-weixin@latest"
+else
+    WEIXIN_NPM_SPEC="@tencent-weixin/openclaw-weixin@legacy"
+fi
+echo "  Pre-installing Weixin plugin (${WEIXIN_NPM_SPEC})..."
 WEIXIN_PLUGIN_DIR="$STAGING/plugins/openclaw-weixin"
 WEIXIN_TMP=$(mktemp -d)
 WEIXIN_OK=false
-if (cd "$WEIXIN_TMP" && npm pack @tencent-weixin/openclaw-weixin --quiet 2>/dev/null); then
+if (cd "$WEIXIN_TMP" && npm pack "$WEIXIN_NPM_SPEC" --quiet 2>/dev/null); then
     WEIXIN_TARBALL=$(ls "$WEIXIN_TMP"/*.tgz 2>/dev/null | head -1)
     if [ -n "$WEIXIN_TARBALL" ]; then
         mkdir -p "$WEIXIN_PLUGIN_DIR"
