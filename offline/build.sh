@@ -218,7 +218,14 @@ echo "  Collecting production dependencies..."
 # Install in a temp dir *outside* the project root so pnpm does not pick up
 # pnpm-workspace.yaml and treats it as a standalone package.
 PROD_TMP="$(mktemp -d)"
-cp "$PROJECT_ROOT/package.json" "$PROD_TMP/"
+# Copy package.json with devDependencies stripped so npm does not attempt to
+# resolve dev-only transitive deps (which may reference unpublished versions).
+node -e "
+  const fs = require('fs');
+  const pkg = JSON.parse(fs.readFileSync('$PROJECT_ROOT/package.json', 'utf8'));
+  delete pkg.devDependencies;
+  fs.writeFileSync('$PROD_TMP/package.json', JSON.stringify(pkg, null, 2));
+"
 [[ -f "$PROJECT_ROOT/pnpm-lock.yaml" ]] && cp "$PROJECT_ROOT/pnpm-lock.yaml" "$PROD_TMP/"
 
 # Use npm (not pnpm) so node_modules is a flat real-directory tree with no
