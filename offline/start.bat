@@ -308,6 +308,12 @@ if exist "plugins\openclaw-qqbot" if not exist ".openclaw\extensions\openclaw-qq
     echo  QQ Bot plugin installed.
 )
 
+if exist "plugins\openclaw-weixin" if not exist ".openclaw\extensions\openclaw-weixin" (
+    if not exist ".openclaw\extensions" mkdir ".openclaw\extensions"
+    xcopy /E /I /Q "plugins\openclaw-weixin" ".openclaw\extensions\openclaw-weixin" >nul
+    echo  Weixin plugin installed.
+)
+
 REM 应用公网访问配置
 if "%ALLOW_HTTP%"=="1" (
     if exist ".openclaw\openclaw.json" (
@@ -376,6 +382,13 @@ if exist "plugins\openclaw-qqbot" if not exist ".openclaw\extensions\openclaw-qq
     if not exist ".openclaw\extensions" mkdir ".openclaw\extensions"
     xcopy /E /I /Q "plugins\openclaw-qqbot" ".openclaw\extensions\openclaw-qqbot" >nul
     echo  QQ Bot plugin installed. Configure QQ channel in Dashboard.
+    echo.
+)
+
+if exist "plugins\openclaw-weixin" if not exist ".openclaw\extensions\openclaw-weixin" (
+    if not exist ".openclaw\extensions" mkdir ".openclaw\extensions"
+    xcopy /E /I /Q "plugins\openclaw-weixin" ".openclaw\extensions\openclaw-weixin" >nul
+    echo  Weixin plugin installed. Configure WeChat in Dashboard.
     echo.
 )
 

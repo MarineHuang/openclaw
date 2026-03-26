@@ -315,6 +315,13 @@ if [[ "$DAEMON_MODE" == true ]]; then
         echo " 已安装 QQ Bot 插件"
     fi
 
+    # 首次启动时安装预置的微信插件
+    if [ -d "plugins/openclaw-weixin" ] && [ ! -d ".openclaw/extensions/openclaw-weixin" ]; then
+        mkdir -p ".openclaw/extensions"
+        cp -r "plugins/openclaw-weixin" ".openclaw/extensions/openclaw-weixin"
+        echo " 已安装微信插件"
+    fi
+
     # 应用公网访问配置
     if [[ "$ALLOW_HTTP" == true ]]; then
         CONFIG_FILE=".openclaw/openclaw.json"
@@ -389,6 +396,14 @@ if [ -d "plugins/openclaw-qqbot" ] && [ ! -d ".openclaw/extensions/openclaw-qqbo
     mkdir -p ".openclaw/extensions"
     cp -r "plugins/openclaw-qqbot" ".openclaw/extensions/openclaw-qqbot"
     echo " 已安装 QQ Bot 插件，请在 Dashboard 中配置 QQ 频道"
+    echo ""
+fi
+
+# 首次启动时安装预置的微信插件
+if [ -d "plugins/openclaw-weixin" ] && [ ! -d ".openclaw/extensions/openclaw-weixin" ]; then
+    mkdir -p ".openclaw/extensions"
+    cp -r "plugins/openclaw-weixin" ".openclaw/extensions/openclaw-weixin"
+    echo " 已安装微信插件，请在 Dashboard 中配置微信"
     echo ""
 fi
 

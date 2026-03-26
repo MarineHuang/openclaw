@@ -311,6 +311,13 @@ if ($Daemon) {
         Write-Host " 已安装 QQ Bot 插件"
     }
 
+    # 首次启动时安装预置的微信插件
+    if ((Test-Path "plugins\openclaw-weixin") -and -not (Test-Path ".openclaw\extensions\openclaw-weixin")) {
+        New-Item -ItemType Directory -Force ".openclaw\extensions" | Out-Null
+        Copy-Item -Recurse "plugins\openclaw-weixin" ".openclaw\extensions\openclaw-weixin"
+        Write-Host " 已安装微信插件"
+    }
+
     # 应用公网访问配置
     if ($AllowHttp) {
         $configFile = ".openclaw\openclaw.json"
@@ -389,6 +396,14 @@ if ((Test-Path "plugins\openclaw-qqbot") -and -not (Test-Path ".openclaw\extensi
     New-Item -ItemType Directory -Force ".openclaw\extensions" | Out-Null
     Copy-Item -Recurse "plugins\openclaw-qqbot" ".openclaw\extensions\openclaw-qqbot"
     Write-Host " 已安装 QQ Bot 插件，请在 Dashboard 中配置 QQ 频道" -ForegroundColor Green
+    Write-Host ""
+}
+
+# 首次启动时安装预置的微信插件
+if ((Test-Path "plugins\openclaw-weixin") -and -not (Test-Path ".openclaw\extensions\openclaw-weixin")) {
+    New-Item -ItemType Directory -Force ".openclaw\extensions" | Out-Null
+    Copy-Item -Recurse "plugins\openclaw-weixin" ".openclaw\extensions\openclaw-weixin"
+    Write-Host " 已安装微信插件，请在 Dashboard 中配置微信" -ForegroundColor Green
     Write-Host ""
 }
 

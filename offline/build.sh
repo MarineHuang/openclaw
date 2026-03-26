@@ -388,6 +388,32 @@ else
     fi
 fi
 
+# Pre-install WeChat (Weixin) official plugin for offline use
+echo "  Pre-installing Weixin plugin (@tencent-weixin/openclaw-weixin)..."
+WEIXIN_PLUGIN_DIR="$STAGING/plugins/openclaw-weixin"
+WEIXIN_TMP=$(mktemp -d)
+WEIXIN_OK=false
+if (cd "$WEIXIN_TMP" && npm pack @tencent-weixin/openclaw-weixin --quiet 2>/dev/null); then
+    WEIXIN_TARBALL=$(ls "$WEIXIN_TMP"/*.tgz 2>/dev/null | head -1)
+    if [ -n "$WEIXIN_TARBALL" ]; then
+        mkdir -p "$WEIXIN_PLUGIN_DIR"
+        tar xzf "$WEIXIN_TARBALL" --strip-components=1 -C "$WEIXIN_PLUGIN_DIR" 2>/dev/null && \
+            WEIXIN_OK=true
+        if [ "$WEIXIN_OK" = true ]; then
+            # Install plugin dependencies (omit dev)
+            (cd "$WEIXIN_PLUGIN_DIR" && npm install --omit=dev --ignore-scripts \
+                --no-audit --no-fund --legacy-peer-deps --quiet 2>/dev/null) || true
+        fi
+    fi
+fi
+rm -rf "$WEIXIN_TMP"
+if [ "$WEIXIN_OK" = false ]; then
+    rm -rf "$WEIXIN_PLUGIN_DIR"
+    echo "  WARNING: Weixin plugin pre-install failed; users will need to install manually."
+else
+    echo "  Weixin plugin pre-installed successfully."
+fi
+
 # ── Step 4: Create archive (or leave as directory) ───────────────
 echo ""
 mkdir -p "$OUTPUT_DIR"
